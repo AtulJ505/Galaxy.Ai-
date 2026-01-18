@@ -1,0 +1,88 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String    @id @default(cuid())
+  clerkId   String    @unique
+  email     String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  
+  workflows Workflow[]
+  runs      WorkflowRun[]
+}
+
+model Workflow {
+  id        String   @id @default(cuid())
+  name      String   @default("Untitled Workflow")
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nodes     Json     // React Flow nodes array
+  edges     Json     // React Flow edges array
+  viewport  Json     @default("{}") // React Flow viewport
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  runs      WorkflowRun[]
+
+  @@index([userId])
+}
+
+model WorkflowRun {
+  id         String        @id @default(cuid())
+  workflowId String
+  workflow   Workflow      @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  status     RunStatus     @default(RUNNING)
+  scope      RunScope      @default(FULL)
+  selectedNodes Json?      // Array of node IDs that were selected for execution
+  duration   Int?          // Duration in milliseconds
+  startedAt  DateTime      @default(now())
+  completedAt DateTime?
+  
+  nodeRuns   NodeRun[]
+
+  @@index([workflowId])
+  @@index([userId])
+}
+
+model NodeRun {
+  id          String   @id @default(cuid())
+  runId       String
+  run         WorkflowRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  nodeId      String
+  nodeType    String
+  status      RunStatus @default(RUNNING)
+  inputs      Json     // Input values used for execution
+  outputs     Json?    // Output values generated
+  error       String?
+  duration    Int?     // Duration in milliseconds
+  startedAt   DateTime @default(now())
+  completedAt DateTime?
+
+  @@index([runId])
+  @@index([nodeId])
+}
+
+enum RunStatus {
+  RUNNING
+  SUCCESS
+  FAILED
+}
+
+enum RunScope {
+  FULL
+  PARTIAL
+  SINGLE
+}
