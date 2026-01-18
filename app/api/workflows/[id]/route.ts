@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 const workflowSchema = z.object({
   name: z.string().optional(),
