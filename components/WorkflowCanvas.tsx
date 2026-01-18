@@ -1,16 +1,19 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import ReactFlow, {
   Background,
   Controls,
   MiniMap,
+  Node,
+  Edge,
+  Connection,
   useNodesState,
   useEdgesState,
   addEdge,
   applyEdgeChanges,
   applyNodeChanges,
-  Connection,
+  Panel,
   ReactFlowProvider,
 } from "reactflow";
 import "reactflow/dist/style.css";
@@ -18,12 +21,14 @@ import { useWorkflowStore } from "@/lib/store";
 import { validateConnection, checkForCycles } from "@/lib/utils";
 import LeftSidebar from "./LeftSidebar";
 import RightSidebar from "./RightSidebar";
+import WorkflowToolbar from "./WorkflowToolbar";
 import TextNode from "./nodes/TextNode";
 import UploadImageNode from "./nodes/UploadImageNode";
 import UploadVideoNode from "./nodes/UploadVideoNode";
 import LLMNode from "./nodes/LLMNode";
 import CropImageNode from "./nodes/CropImageNode";
 import ExtractFrameNode from "./nodes/ExtractFrameNode";
+import { WorkflowNode } from "@/lib/types";
 
 const nodeTypes = {
   text: TextNode,
@@ -43,11 +48,14 @@ export default function WorkflowCanvas() {
     setEdges,
     setViewport,
     addEdge: addEdgeToStore,
+    workflowId,
+    setWorkflowId,
   } = useWorkflowStore();
 
   const [nodes, setNodesState, onNodesChange] = useNodesState(storeNodes);
   const [edges, setEdgesState, onEdgesChange] = useEdgesState(storeEdges);
 
+  // Sync with store
   useEffect(() => {
     setNodesState(storeNodes);
   }, [storeNodes, setNodesState]);
@@ -82,6 +90,7 @@ export default function WorkflowCanvas() {
       const targetNode = nodes.find((n) => n.id === params.target);
       if (!sourceNode || !targetNode) return;
 
+      // Validate connection types
       const sourceHandleType = (() => {
         if (params.sourceHandle) {
           if (
@@ -114,6 +123,7 @@ export default function WorkflowCanvas() {
         alert(validation.message);
         return;
       }
+      // Check for cycles
       if (checkForCycles(nodes, edges, params.source!, params.target!)) {
         alert("Cannot create circular dependencies");
         return;
@@ -126,41 +136,47 @@ export default function WorkflowCanvas() {
   );
 
   const onMove = useCallback(
-    (_: any, vp: any) => {
-      setViewport(vp);
+    (_: any, viewport: any) => {
+      setViewport(viewport);
     },
     [setViewport]
   );
+
+  const onPaneClick = useCallback((e: React.MouseEvent) => {
+    // Deselect nodes on pane click
+  }, []);
 
   return (
     <ReactFlowProvider>
       <div className="h-screen w-screen flex">
         <LeftSidebar />
         <div className="flex-1 relative">
+          <WorkflowToolbar />
           <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            onNodesChange={onNodesChangeWrapper}
-            onEdgesChange={onEdgesChangeWrapper}
-            onConnect={onConnect}
-            onMove={onMove}
-            nodeTypes={nodeTypes}
-            fitView
-            className="dot-grid bg-[#0a0a0a]"
-            defaultViewport={viewport}
-            connectionLineStyle={{ stroke: "#9333ea", strokeWidth: 2 }}
-            defaultEdgeOptions={{
-              style: { stroke: "#9333ea", strokeWidth: 2 },
-              animated: true,
-            }}
-          >
-            <Background color="#333" gap={20} size={1} />
-            <Controls className="bg-[#1a1a1a] border border-[#333]" />
-            <MiniMap
-              className="bg-[#1a1a1a] border border-[#333]"
-              nodeColor="#9333ea"
-            />
-          </ReactFlow>
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChangeWrapper}
+          onEdgesChange={onEdgesChangeWrapper}
+          onConnect={onConnect}
+          onMove={onMove}
+          onPaneClick={onPaneClick}
+          nodeTypes={nodeTypes}
+          fitView
+          className="dot-grid bg-[#0a0a0a]"
+          defaultViewport={viewport}
+          connectionLineStyle={{ stroke: "#9333ea", strokeWidth: 2 }}
+          defaultEdgeOptions={{
+            style: { stroke: "#9333ea", strokeWidth: 2 },
+            animated: true,
+          }}
+        >
+          <Background color="#333" gap={20} size={1} />
+          <Controls className="bg-[#1a1a1a] border border-[#333]" />
+          <MiniMap
+            className="bg-[#1a1a1a] border border-[#333]"
+            nodeColor="#9333ea"
+          />
+        </ReactFlow>
         </div>
         <RightSidebar />
       </div>
